@@ -1,4 +1,3 @@
-// Package main provides ...
 package main
 
 import (
@@ -8,57 +7,34 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"io"
 	"strings"
 	"text/template"
 	"unicode"
 )
 
+var t *template.Template
+
 var (
-	src string = `
-package subtitle
+	header = []byte(`
+package controls
 
 import (
-	"context"
-	"github.com/relaxgo/subtitle-server/db"
+	"bitbucket.org/reewoow_web/jiyin/models"
+	"bitbucket.org/reewoow_web/jiyin/components/param"
+	"github.com/labstack/echo"
 )
-
-// some des
-func FindProjects(c context.Context, where, sorts string, skip int, limit int) ([]Project, error) {
-	list := make([]Project, 0)
-
-	query := db.DB.
-		Preload("Ower").
-		Offset(skip).
-		Limit(limit).
-		Find(&list)
-
-	return list, query.Error
-}
-
-/*
-* param
-*/
-func AddProject(c context.Context, project *Project) (*Project, error) {
-	query := db.DB.Create(project)
-	return project, query.Error
-}
-	`
+	`)
 )
-
-var t *template.Template
 
 func init() {
 	tmpl := `
 	func {{.Name }}(c echo.Context) error {
-    ctx := ctx.New(c)
 		{{ range $_, $p := .Params -}}
-		{{ $p.Name }} := params.{{MethodOfType $p.Type }}(c, "{{$p.Name}}")
+		{{ $p.Name }} := param.{{MethodOfType $p.Type }}(c, "{{$p.Name}}")
 		{{ end }}
-    v, err:= {{.Pkg}}.{{.Name}}(ctx, {{.ParamsText}})
-    if err != nil {
-        return err
-    }
-    return c.JSON(http.StatusOK, v)
+    v, err:= {{.Pkg}}.{{.Name}}({{.ParamsText}})
+		return Respond(c, v, err)
 	}
 	`
 	t = template.New("fn").
@@ -71,19 +47,23 @@ func init() {
 	fmt.Println(err)
 }
 
-func main() {
+func Gen(src io.Reader) []byte {
 	fset := token.NewFileSet() // positions are relative to fset
 	f, err := parser.ParseFile(fset, "src.go", src, parser.ParseComments)
 	if err != nil {
 		panic(err)
 	}
 
-	bf := bytes.NewBuffer(nil)
+	bf := bytes.NewBuffer(header)
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.File:
 			return true
 		case *ast.FuncDecl:
+			// TODO 过滤特定函数名, 如小写开头，或者ignore
+			if unicode.IsLower(rune(x.Name.Name[0])) {
+				return false
+			}
 			if data, err := GenRouter(f, x); err != nil {
 				fmt.Println(err)
 			} else {
@@ -93,11 +73,8 @@ func main() {
 		return false
 	})
 	data, err := format.Source(bf.Bytes())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(string(data))
+	handleErr(err)
+	return data
 }
 
 type RouteData struct {
@@ -119,7 +96,7 @@ func GenRouter(f *ast.File, funcDecl *ast.FuncDecl) ([]byte, error) {
 }
 
 func NewRoute(file *ast.File, fn *ast.FuncDecl) *RouteData {
-	list := fn.Type.Params.List[1:]
+	list := fn.Type.Params.List[0:]
 	var params []Param
 	for _, field := range list {
 		t := fmt.Sprintf("%s", field.Type)
@@ -127,6 +104,7 @@ func NewRoute(file *ast.File, fn *ast.FuncDecl) *RouteData {
 			t = "object"
 		}
 		for _, n := range field.Names {
+			// TODO 自定义参数名
 			params = append(params, Param{
 				Name: n.Name,
 				Type: t,
