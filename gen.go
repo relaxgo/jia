@@ -31,7 +31,7 @@ func init() {
 	tmpl := `
 	func {{.Name }}(c echo.Context) error {
 		{{ range $_, $p := .Params -}}
-		{{ $p.Name }} := param.{{MethodOfType $p.Type }}(c, "{{$p.Name}}")
+		{{ $p.Name }} := param.{{MethodOfType $p.Type }}(c, "{{ ToLower $p.Name}}")
 		{{ end }}
     v, err:= {{.Pkg}}.{{.Name}}({{.ParamsText}})
 		return Respond(c, v, err)
@@ -41,6 +41,9 @@ func init() {
 		Funcs(template.FuncMap{
 		"MethodOfType": func(name string) string {
 			return UpperInitial(name)
+		},
+		"ToLower": func(s string) string {
+			return strings.ToLower(s)
 		},
 	})
 	_, err := t.Parse(tmpl)
