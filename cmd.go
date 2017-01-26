@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 )
 
 var (
@@ -19,16 +20,23 @@ func init() {
 
 func main() {
 	flag.Parse()
+	if GoFilePath == "" {
+		flag.Usage()
+		return
+	}
 	file, err := os.Open(GoFilePath)
 	defer file.Close()
 	handleErr(err)
-	data := Gen(file)
-	if Output == "" {
-		fmt.Println(string(data))
-		return
-	}
-	err = ioutil.WriteFile(Output, data, 0640)
+	f, err := Parse(path.Base(GoFilePath), file)
 	handleErr(err)
+	data, err := Render(f, EchoTemp)
+	handleErr(err)
+	if Output != "" {
+		err = ioutil.WriteFile(Output, data, 0640)
+		handleErr(err)
+	} else {
+		fmt.Println(string(data))
+	}
 }
 
 func handleErr(err error) {
