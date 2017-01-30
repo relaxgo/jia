@@ -28,7 +28,6 @@ type GoFile struct {
 }
 
 func Parse(filename string, r io.Reader) (*GoFile, error) {
-	fmt.Println(filename)
 	fset := token.NewFileSet() // positions are relative to fset
 
 	f, err := parser.ParseFile(fset, filename, r, parser.ParseComments)
@@ -70,13 +69,27 @@ func ParseFields(list *ast.FieldList) []Field {
 	}
 	for _, field := range list.List {
 		for _, n := range field.Names {
+
 			fieldSlice = append(fieldSlice, Field{
 				Name: n.Name,
-				Type: fmt.Sprintf("%s", field.Type),
+				Type: fieldString(field.Type),
 			})
 		}
 	}
 	return fieldSlice
+}
+
+func fieldString(n ast.Expr) string {
+	switch e := n.(type) {
+	case *ast.Ident:
+		return fmt.Sprintf("%s", e)
+	case *ast.StarExpr:
+		return "*" + fieldString(e.X)
+	case *ast.SelectorExpr:
+		return fieldString(e.X) + "." + fieldString(e.Sel)
+	default:
+		panic(fmt.Sprintf("Unsupport Expr: %T", e))
+	}
 }
 
 func (file *GoFile) ValidFuncs() []Func {
