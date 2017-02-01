@@ -7,11 +7,13 @@ import (
 	"go/token"
 	"io"
 	"unicode"
+
+	"gopkg.in/yaml.v2"
 )
 
 type Field struct {
 	Name string
-	Type string
+	Type FieldType
 }
 
 type Func struct {
@@ -20,6 +22,7 @@ type Func struct {
 	Params  []Field
 	Returns []Field
 	Body    string
+	Doc     map[string]interface{}
 }
 
 type GoFile struct {
@@ -59,6 +62,11 @@ func ParseFunc(funcDecl *ast.FuncDecl) *Func {
 	f.Name = funcDecl.Name.Name
 	f.Params = ParseFields(funcDecl.Type.Params)
 	f.Returns = ParseFields(funcDecl.Type.Results)
+
+	if funcDecl.Doc != nil {
+		yaml.Unmarshal([]byte(funcDecl.Doc.Text()), &f.Doc)
+	}
+
 	return f
 }
 
@@ -72,24 +80,39 @@ func ParseFields(list *ast.FieldList) []Field {
 
 			fieldSlice = append(fieldSlice, Field{
 				Name: n.Name,
-				Type: fieldString(field.Type),
+				Type: *ParseField(&FieldType{}, field.Type),
 			})
 		}
 	}
 	return fieldSlice
 }
 
-func fieldString(n ast.Expr) string {
+type (
+	FieldType struct {
+		Base  bool
+		Point bool
+		Pkg   string
+		Name  string
+	}
+)
+
+func ParseField(t *FieldType, n ast.Expr) *FieldType {
 	switch e := n.(type) {
 	case *ast.Ident:
-		return fmt.Sprintf("%s", e)
+		t.Base = true
+		t.Name = fmt.Sprintf("%s", e)
 	case *ast.StarExpr:
-		return "*" + fieldString(e.X)
+		ParseField(t, e.X)
+		t.Point = true
+		t.Base = false
 	case *ast.SelectorExpr:
-		return fieldString(e.X) + "." + fieldString(e.Sel)
+		ParseField(t, e.Sel)
+		t.Pkg = fmt.Sprintf("%s", e)
+		t.Base = false
 	default:
 		panic(fmt.Sprintf("Unsupport Expr: %T", e))
 	}
+	return t
 }
 
 func (file *GoFile) ValidFuncs() []Func {
