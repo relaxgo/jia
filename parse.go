@@ -3,17 +3,24 @@ package jia
 import (
 	"fmt"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"io"
 	"unicode"
-
-	"gopkg.in/yaml.v2"
 )
+
+type FieldType types.Type
 
 type Field struct {
 	Name string
 	Type FieldType
+}
+
+type Struct struct {
+	Name   string
+	Fields []Field
 }
 
 type Func struct {
@@ -22,12 +29,27 @@ type Func struct {
 	Params  []Field
 	Returns []Field
 	Body    string
-	Doc     map[string]interface{}
+	Doc     string
 }
 
 type GoFile struct {
 	Package string
 	Funcs   []*Func
+	Structs []Struct
+}
+
+func (f *Field) TypeKind() string {
+	s := fmt.Sprintf("%T", f.Type)
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == '.' {
+			return s[i+1:]
+		}
+	}
+	return ""
+}
+
+func (f *Field) IsBasic() bool {
+	return f.TypeKind() == "Basic"
 }
 
 func Parse(filename string, r io.Reader) (*GoFile, error) {
@@ -38,81 +60,87 @@ func Parse(filename string, r io.Reader) (*GoFile, error) {
 		return nil, err
 	}
 
+	conf := types.Config{Importer: importer.Default()}
+	info := &types.Info{
+		Defs:  make(map[*ast.Ident]types.Object),
+		Types: make(map[ast.Expr]types.TypeAndValue),
+	}
+	_, err = conf.Check(filename, fset, []*ast.File{f}, info)
+	if err != nil {
+		return nil, err
+	}
+
 	file := &GoFile{}
 	file.Package = f.Name.String()
+
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.File:
 			return true
 		case *ast.FuncDecl:
-			file.Funcs = append(file.Funcs, ParseFunc(x))
+			file.Funcs = append(file.Funcs, ParseFunc(info, x))
 		}
 		return false
 	})
 	return file, nil
 }
 
-func ParseFunc(funcDecl *ast.FuncDecl) *Func {
+func ParseFunc(info *types.Info, funcDecl *ast.FuncDecl) *Func {
 	f := &Func{}
 
 	if funcDecl.Recv != nil {
-		f.Recv = &ParseFields(funcDecl.Recv)[0]
+		f.Recv = &ParseFields(info, funcDecl.Recv)[0]
 	}
 
 	f.Name = funcDecl.Name.Name
-	f.Params = ParseFields(funcDecl.Type.Params)
-	f.Returns = ParseFields(funcDecl.Type.Results)
-
-	if funcDecl.Doc != nil {
-		yaml.Unmarshal([]byte(funcDecl.Doc.Text()), &f.Doc)
-	}
+	f.Params = ParseFields(info, funcDecl.Type.Params)
+	f.Returns = ParseFields(info, funcDecl.Type.Results)
+	f.Doc = funcDecl.Doc.Text()
 
 	return f
 }
 
-func ParseFields(list *ast.FieldList) []Field {
+func ParseFields(info *types.Info, list *ast.FieldList) []Field {
 	var fieldSlice []Field
 	if list == nil {
 		return nil
 	}
+
 	for _, field := range list.List {
 		for _, n := range field.Names {
-
 			fieldSlice = append(fieldSlice, Field{
 				Name: n.Name,
-				Type: *ParseField(&FieldType{}, field.Type),
+				Type: ParseFieldType(info, field.Type),
 			})
 		}
 	}
+
 	return fieldSlice
 }
 
-type (
-	FieldType struct {
-		Base  bool
-		Point bool
-		Pkg   string
-		Name  string
+func Underlying(t types.Type) {
+	switch s := t.(type) {
+	case *types.Named:
+		fmt.Println(s.Obj().Name())
+		// Underlying(s.Underlying())
+	case *types.Struct:
+		// fmt.Println(s)
+		for i := 0; i < s.NumFields(); i++ {
+			// s := s.Field(i)
+			// Underlying(s.Type())
+		}
+	case *types.Slice:
+		// Underlying(s.Elem())
 	}
-)
+}
 
-func ParseField(t *FieldType, n ast.Expr) *FieldType {
-	switch e := n.(type) {
-	case *ast.Ident:
-		t.Base = true
-		t.Name = fmt.Sprintf("%s", e)
-	case *ast.StarExpr:
-		ParseField(t, e.X)
-		t.Point = true
-		t.Base = false
-	case *ast.SelectorExpr:
-		ParseField(t, e.Sel)
-		t.Pkg = fmt.Sprintf("%s", e)
-		t.Base = false
-	default:
-		panic(fmt.Sprintf("Unsupport Expr: %T", e))
+func ParseFieldType(info *types.Info, n ast.Expr) FieldType {
+	ts := info.Types
+	if t, ok := ts[n]; ok {
+		Underlying(t.Type)
+		return FieldType(t.Type)
 	}
-	return t
+	return nil
 }
 
 func (file *GoFile) ValidFuncs() []Func {

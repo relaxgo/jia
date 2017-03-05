@@ -74,7 +74,10 @@ func Render(f *jia.GoFile, t *template.Template) ([]byte, error) {
 
 func IsDir(p string) bool {
 	info, err := os.Stat(p)
-	handleErr("faild open file", err)
+	// FIXME p may be not exist
+	if err != nil {
+		return false
+	}
 	return info.IsDir()
 }
 

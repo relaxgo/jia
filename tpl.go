@@ -17,6 +17,12 @@ var BaseFuncs = template.FuncMap{
 		}
 		return ""
 	},
+	"firstToLower": func(str string) string {
+		for i, v := range str {
+			return string(unicode.ToLower(v)) + str[i+1:]
+		}
+		return ""
+	},
 	"toLower": func(s string) string {
 		return strings.ToLower(s)
 	},
