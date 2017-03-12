@@ -1,6 +1,7 @@
 package jia
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/importer"
@@ -8,7 +9,10 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"log"
 	"unicode"
+
+	"gopkg.in/yaml.v1"
 )
 
 type FieldType types.Type
@@ -24,12 +28,13 @@ type Struct struct {
 }
 
 type Func struct {
-	Recv    *Field
-	Name    string
-	Params  []Field
-	Returns []Field
-	Body    string
-	Doc     string
+	Recv      *Field
+	Name      string
+	Params    []Field
+	Returns   []Field
+	Body      string
+	Doc       string
+	ParsedDoc map[string]interface{}
 }
 
 type GoFile struct {
@@ -57,7 +62,7 @@ func Parse(filename string, r io.Reader) (*GoFile, error) {
 
 	f, err := parser.ParseFile(fset, filename, r, parser.ParseComments)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("parser.ParseFile:" + err.Error())
 	}
 
 	conf := types.Config{Importer: importer.Default()}
@@ -67,7 +72,8 @@ func Parse(filename string, r io.Reader) (*GoFile, error) {
 	}
 	_, err = conf.Check(filename, fset, []*ast.File{f}, info)
 	if err != nil {
-		return nil, err
+		// FIXME Check can't Resolve type in self pk
+		log.Println(errors.New("conf.Check:" + err.Error()))
 	}
 
 	file := &GoFile{}
@@ -95,7 +101,12 @@ func ParseFunc(info *types.Info, funcDecl *ast.FuncDecl) *Func {
 	f.Name = funcDecl.Name.Name
 	f.Params = ParseFields(info, funcDecl.Type.Params)
 	f.Returns = ParseFields(info, funcDecl.Type.Results)
-	f.Doc = funcDecl.Doc.Text()
+	// TODO doc format should be set in cmd
+	if funcDecl.Doc != nil {
+		f.Doc = funcDecl.Doc.Text()
+		f.ParsedDoc = make(map[string]interface{})
+		yaml.Unmarshal([]byte(funcDecl.Doc.Text()), &f.ParsedDoc)
+	}
 
 	return f
 }
@@ -137,7 +148,6 @@ func Underlying(t types.Type) {
 func ParseFieldType(info *types.Info, n ast.Expr) FieldType {
 	ts := info.Types
 	if t, ok := ts[n]; ok {
-		Underlying(t.Type)
 		return FieldType(t.Type)
 	}
 	return nil
