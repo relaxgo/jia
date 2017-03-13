@@ -2,6 +2,7 @@ package jia
 
 import (
 	"html/template"
+	"path"
 	"reflect"
 	"strings"
 	"unicode"
@@ -25,6 +26,12 @@ var BaseFuncs = template.FuncMap{
 	},
 	"toLower": func(s string) string {
 		return strings.ToLower(s)
+	},
+	"base": func(s string) string {
+		return path.Base(s)
+	},
+	"dir": func(s string) string {
+		return path.Dir(s)
 	},
 	"joinField": func(slice interface{}, fieldName, sep string) string {
 		v := reflect.ValueOf(slice)

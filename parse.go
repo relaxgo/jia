@@ -53,6 +53,10 @@ func (f *Field) TypeKind() string {
 	return ""
 }
 
+func (f *Field) TypeName() string {
+	return fmt.Sprint(f.Type)
+}
+
 func (f *Field) IsBasic() bool {
 	return f.TypeKind() == "Basic"
 }
@@ -70,7 +74,7 @@ func Parse(filename string, r io.Reader) (*GoFile, error) {
 		Defs:  make(map[*ast.Ident]types.Object),
 		Types: make(map[ast.Expr]types.TypeAndValue),
 	}
-	_, err = conf.Check(filename, fset, []*ast.File{f}, info)
+	_, err = conf.Check(pkgOfGoFile(filename), fset, []*ast.File{f}, info)
 	if err != nil {
 		// FIXME Check can't Resolve type in self pk
 		log.Println(errors.New("conf.Check:" + err.Error()))
@@ -165,4 +169,8 @@ func (file *GoFile) ValidFuncs() []Func {
 		fns = append(fns, *f)
 	}
 	return fns
+}
+
+func packageOfGoFile(f string) string {
+	// TODO
 }

@@ -55,6 +55,8 @@ func TestParse(t *testing.T) {
 	for _, fc := range f.Funcs {
 		for _, p := range fc.Params {
 			t.Log(p)
+			t.Logf("%s", p.Type)
+			t.Log(p.Type)
 			t.Log(p.TypeKind())
 		}
 	}
