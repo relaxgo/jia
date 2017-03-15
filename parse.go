@@ -10,6 +10,8 @@ import (
 	"go/types"
 	"io"
 	"log"
+	"path"
+	"strings"
 	"unicode"
 
 	"gopkg.in/yaml.v1"
@@ -61,20 +63,43 @@ func (f *Field) IsBasic() bool {
 	return f.TypeKind() == "Basic"
 }
 
-func Parse(filename string, r io.Reader) (*GoFile, error) {
-	fset := token.NewFileSet() // positions are relative to fset
+func ParsePackage(filename string) (*GoFile, error) {
+	fset := token.NewFileSet()
+	dir, pkg, _ := splitPath(filename)
+	pkgs, err := parser.ParseDir(fset, dir, nil, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	targetPkg := pkgs[pkg]
+	if targetPkg == nil {
+		return nil, errors.New("not have package: " + pkg)
+	}
+	return Parse(filename, fset, targetPkg.Files)
+}
 
+func ParseFile(filename string, r io.Reader) (*GoFile, error) {
+	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, r, parser.ParseComments)
 	if err != nil {
 		return nil, errors.New("parser.ParseFile:" + err.Error())
 	}
+	return Parse(filename, fset, map[string]*ast.File{filename: f})
+}
 
+func Parse(filename string, fset *token.FileSet, filemap map[string]*ast.File) (*GoFile, error) {
 	conf := types.Config{Importer: importer.Default()}
 	info := &types.Info{
 		Defs:  make(map[*ast.Ident]types.Object),
 		Types: make(map[ast.Expr]types.TypeAndValue),
 	}
-	_, err = conf.Check(pkgOfGoFile(filename), fset, []*ast.File{f}, info)
+
+	_, pkg, _ := splitPath(filename)
+	f := filemap[filename]
+	if f == nil {
+		return nil, errors.New("file not exist")
+	}
+
+	_, err := conf.Check(pkg, fset, mapToSlice(filemap), info)
 	if err != nil {
 		// FIXME Check can't Resolve type in self pk
 		log.Println(errors.New("conf.Check:" + err.Error()))
@@ -171,6 +196,22 @@ func (file *GoFile) ValidFuncs() []Func {
 	return fns
 }
 
-func packageOfGoFile(f string) string {
-	// TODO
+func splitPath(f string) (dir, pkg, gofile string) {
+	dir, gofile = path.Split(f)
+	dirs := strings.Split(strings.TrimRight(dir, "/"), "/")
+
+	if l := len(dirs); l != 0 {
+		pkg = dirs[len(dirs)-1]
+	}
+	return
+}
+
+func mapToSlice(m map[string]*ast.File) []*ast.File {
+	list := make([]*ast.File, 0)
+	for _, v := range m {
+		if v != nil {
+			list = append(list, v)
+		}
+	}
+	return list
 }

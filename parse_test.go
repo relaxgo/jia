@@ -48,7 +48,7 @@ func CreateOrder(customerId int,  order models.Device) (*models.Device, error) {
 
 func TestParse(t *testing.T) {
 	r := strings.NewReader(testFile)
-	f, err := Parse("user.go", r)
+	f, err := ParseFile("user.go", r)
 	if err != nil {
 		t.Error(err)
 	}

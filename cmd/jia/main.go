@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/relaxgo/jia"
 	"github.com/relaxgo/jia/tpls"
@@ -32,7 +33,9 @@ func main() {
 	defer file.Close()
 	handleErr("open file ", err)
 
-	f, err := jia.Parse(*GoFilePath, file)
+	abspath, err := filepath.Abs(*GoFilePath)
+	handleErr("expend go file path", err)
+	f, err := jia.ParsePackage(abspath)
 	handleErr("parse go file", err)
 
 	t := LoadTemplate(*Template)
