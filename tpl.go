@@ -2,16 +2,13 @@ package jia
 
 import (
 	"html/template"
-	"path"
 	"reflect"
-	"strings"
 	"unicode"
+
+	"github.com/Masterminds/sprig"
 )
 
-var BaseFuncs = template.FuncMap{
-	"isBaseType": func(str string) bool {
-		return true
-	},
+var StringsFuncs = template.FuncMap{
 	"firstToUpper": func(str string) string {
 		for i, v := range str {
 			return string(unicode.ToUpper(v)) + str[i+1:]
@@ -24,26 +21,26 @@ var BaseFuncs = template.FuncMap{
 		}
 		return ""
 	},
-	"toLower": func(s string) string {
-		return strings.ToLower(s)
-	},
-	"base": func(s string) string {
-		return path.Base(s)
-	},
-	"dir": func(s string) string {
-		return path.Dir(s)
-	},
-	"joinField": func(slice interface{}, fieldName, sep string) string {
-		v := reflect.ValueOf(slice)
+	"pluckStrings": func(src interface{}, fieldName string) []string {
+		v := reflect.ValueOf(src)
 		t := v.Type()
 		if t.Kind() != reflect.Slice {
-			panic("JoinFiled need slice")
+			panic("pluck need slice")
 		}
 		l := v.Len()
 		s := make([]string, l, l)
 		for i := 0; i < l; i++ {
 			s[i] = v.Index(i).FieldByName(fieldName).String()
 		}
-		return strings.Join(s, sep)
+		return s
 	},
+}
+
+var BaseFuncs template.FuncMap
+
+func init() {
+	BaseFuncs = sprig.FuncMap()
+	for k, v := range StringsFuncs {
+		BaseFuncs[k] = v
+	}
 }
