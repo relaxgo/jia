@@ -3,10 +3,14 @@ package jia
 import (
 	"html/template"
 	"reflect"
+	"regexp"
+	"strings"
 	"unicode"
 
 	"github.com/Masterminds/sprig"
 )
+
+var underscoreRegexp = regexp.MustCompile("[A-Z]")
 
 var StringsFuncs = template.FuncMap{
 	"firstToUpper": func(str string) string {
@@ -20,6 +24,11 @@ var StringsFuncs = template.FuncMap{
 			return string(unicode.ToLower(v)) + str[i+1:]
 		}
 		return ""
+	},
+	"underscore": func(str string) string {
+		return underscoreRegexp.ReplaceAllStringFunc(str, func(s string) string {
+			return "_" + strings.ToLower(s)
+		})
 	},
 	"pluckStrings": func(src interface{}, fieldName string) []string {
 		v := reflect.ValueOf(src)

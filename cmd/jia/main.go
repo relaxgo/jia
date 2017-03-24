@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 
 	"github.com/relaxgo/jia"
-	"github.com/relaxgo/jia/tpls"
 )
 
 var (
@@ -53,7 +52,7 @@ func main() {
 
 func LoadTemplate(f string) *template.Template {
 	if f == "" {
-		return tpls.EchoTemp
+		panic("need template file")
 	}
 	data, err := ioutil.ReadFile(f)
 	handleErr("load template", err)
