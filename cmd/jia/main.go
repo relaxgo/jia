@@ -7,6 +7,7 @@ import (
 	"go/format"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -19,6 +20,8 @@ var (
 	GoFilePath = flag.String("f", "", "go 文件")
 	Template   = flag.String("t", "", "模版文件")
 	Format     = flag.Bool("format", false, "格式化")
+
+	infoLog = log.New(os.Stderr, "", log.Ldate|log.Ltime)
 )
 
 func main() {
@@ -39,7 +42,7 @@ func main() {
 
 	t := LoadTemplate(*Template)
 	data, err := Render(f, t)
-	fmt.Println("success to  generate file")
+	handleErr("generate file", err)
 
 	if *Output != "" {
 		filePath := Resolve(*GoFilePath, *Output)
@@ -95,10 +98,10 @@ func Resolve(inPath, outPath string) string {
 
 func handleErr(task string, err error) {
 	if err != nil {
-		fmt.Println("failed to ", task)
-		fmt.Println(err)
+		infoLog.Println("failed to ", task)
+		infoLog.Println(err)
 		os.Exit(1)
 	} else {
-		fmt.Println("success to ", task)
+		infoLog.Println("success to ", task)
 	}
 }

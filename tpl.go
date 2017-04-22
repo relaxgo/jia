@@ -1,6 +1,7 @@
 package jia
 
 import (
+	"encoding/json"
 	"html/template"
 	"reflect"
 	"regexp"
@@ -24,6 +25,13 @@ var StringsFuncs = template.FuncMap{
 			return string(unicode.ToLower(v)) + str[i+1:]
 		}
 		return ""
+	},
+	"toJSON": func(v interface{}) string {
+		data, _ := json.Marshal(v)
+		return string(data)
+	},
+	"noescape": func(v string) template.HTML {
+		return template.HTML(v)
 	},
 	"underscore": func(str string) string {
 		return underscoreRegexp.ReplaceAllStringFunc(str, func(s string) string {
