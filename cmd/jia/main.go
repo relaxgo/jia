@@ -16,17 +16,21 @@ import (
 )
 
 var (
-	Output     = flag.String("o", "", "输出文件路径")
-	GoFilePath = flag.String("f", "", "go 文件")
-	Template   = flag.String("t", "", "模版文件")
-	Format     = flag.Bool("format", false, "格式化")
+	Output     = flag.String("out", "", "输出文件路径")
+	GoFilePath = flag.String("file", "", "go 文件")
+	Template   = flag.String("tpl", "", "模版文件")
+	Format     = flag.String("format", "", "格式化")
 
 	infoLog = log.New(os.Stderr, "", log.Ldate|log.Ltime)
 )
 
+const (
+	FormatGo = "go"
+)
+
 func main() {
 	flag.Parse()
-	if *GoFilePath == "" {
+	if *GoFilePath == "" || *Template == "" {
 		flag.Usage()
 		return
 	}
@@ -72,7 +76,7 @@ func Render(f *jia.GoFile, t *template.Template) ([]byte, error) {
 		return nil, err
 	}
 
-	if *Format {
+	if *Format == FormatGo {
 		v, err := format.Source(bf.Bytes())
 		handleErr("format go file", err)
 		return v, err
