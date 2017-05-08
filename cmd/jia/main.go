@@ -41,7 +41,7 @@ func main() {
 
 	abspath, err := filepath.Abs(*GoFilePath)
 	handleErr("expend go file path", err)
-	f, err := jia.ParsePackage(abspath)
+	f, err := jia.ParseFile(abspath, nil)
 	handleErr("parse go file", err)
 
 	t := LoadTemplate(*Template)

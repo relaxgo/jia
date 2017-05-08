@@ -10,6 +10,7 @@ import (
 	"go/types"
 	"io"
 	"log"
+	"os"
 	"path"
 	"strings"
 	"unicode"
@@ -77,7 +78,13 @@ func ParsePackage(filename string) (*GoFile, error) {
 	return Parse(filename, fset, targetPkg.Files)
 }
 
-func ParseFile(filename string, r io.Reader) (*GoFile, error) {
+func ParseFile(filename string, r io.Reader) (gofile *GoFile, err error) {
+	if r == nil {
+		r, err = os.Open(filename)
+		if err != nil {
+			return nil, errors.New("parser.OpenFile:" + err.Error())
+		}
+	}
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, r, parser.ParseComments)
 	if err != nil {
