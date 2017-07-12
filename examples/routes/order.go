@@ -4,9 +4,8 @@ package routes
 import (
 	"net/http"
 
-	"somepkg/models"
-
 	"github.com/relaxgo/tangram/param"
+	"somepkg/models"
 )
 
 func FindOrderById(w http.ResponseWriter, r *http.Request) {

@@ -95,6 +95,9 @@ func ParseFile(filename string, r io.Reader) (gofile *GoFile, err error) {
 
 func Parse(filename string, fset *token.FileSet, filemap map[string]*ast.File) (*GoFile, error) {
 	conf := types.Config{Importer: importer.Default()}
+	// TODO import from source ?
+	//imp := NewImporter(&build.Default, fset, make(map[string]*types.Package))
+	//conf := types.Config{Importer: imp}
 	info := &types.Info{
 		Defs:  make(map[*ast.Ident]types.Object),
 		Types: make(map[ast.Expr]types.TypeAndValue),
