@@ -42,6 +42,7 @@ type Func struct {
 
 type GoFile struct {
 	Package string
+	Name    string
 	Funcs   []*Func
 	Structs []Struct
 }
@@ -117,6 +118,8 @@ func Parse(filename string, fset *token.FileSet, filemap map[string]*ast.File) (
 
 	file := &GoFile{}
 	file.Package = f.Name.String()
+
+	file.Name = strings.TrimSuffix(path.Base(filename), ".go")
 
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {

@@ -12,6 +12,7 @@ import (
 )
 
 var underscoreRegexp = regexp.MustCompile("[A-Z]")
+var upscoreRegexp = regexp.MustCompile("_[a-z]")
 
 var StringsFuncs = template.FuncMap{
 	"firstToUpper": func(str string) string {
@@ -36,6 +37,11 @@ var StringsFuncs = template.FuncMap{
 	"underscore": func(str string) string {
 		return underscoreRegexp.ReplaceAllStringFunc(str, func(s string) string {
 			return "_" + strings.ToLower(s)
+		})
+	},
+	"upscore": func(str string) string {
+		return upscoreRegexp.ReplaceAllStringFunc(str, func(s string) string {
+			return strings.ToUpper(strings.TrimPrefix(s, "_"))
 		})
 	},
 	"pluckStrings": func(src interface{}, fieldName string) []string {
