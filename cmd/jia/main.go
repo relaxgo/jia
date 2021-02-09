@@ -16,40 +16,40 @@ import (
 )
 
 var (
-	Output     = flag.String("out", "", "输出文件路径")
-	GoFilePath = flag.String("file", "", "go 文件")
-	Template   = flag.String("tpl", "", "模版文件")
-	Format     = flag.String("format", "", "格式化")
+	output      = flag.String("out", "", "输出文件路径")
+	goFilePath  = flag.String("file", "", "go 文件")
+	filTemplate = flag.String("tpl", "", "模版文件")
+	fileFormat  = flag.String("format", "", "格式化")
 
 	infoLog = log.New(os.Stderr, "", log.Ldate|log.Ltime)
 )
 
 const (
-	FormatGo = "go"
+	formatGo = "go"
 )
 
 func main() {
 	flag.Parse()
-	if *GoFilePath == "" || *Template == "" {
+	if *goFilePath == "" || *filTemplate == "" {
 		flag.Usage()
 		return
 	}
 
-	file, err := os.Open(*GoFilePath)
+	file, err := os.Open(*goFilePath)
 	defer file.Close()
 	handleErr("open file ", err)
 
-	abspath, err := filepath.Abs(*GoFilePath)
+	abspath, err := filepath.Abs(*goFilePath)
 	handleErr("expend go file path", err)
 	f, err := jia.ParsePackage(abspath)
 	handleErr("parse go file", err)
 
-	t := LoadTemplate(*Template)
-	data, err := Render(f, t)
+	t := loadTemplate(*filTemplate)
+	data, err := render(f, t)
 	handleErr("generate file", err)
 
-	if *Output != "" {
-		filePath := Resolve(*GoFilePath, *Output)
+	if *output != "" {
+		filePath := resolve(*goFilePath, *output)
 		err = ioutil.WriteFile(filePath, data, 0640)
 		handleErr("write file", err)
 	} else {
@@ -57,7 +57,7 @@ func main() {
 	}
 }
 
-func LoadTemplate(f string) *template.Template {
+func loadTemplate(f string) *template.Template {
 	if f == "" {
 		panic("need template file")
 	}
@@ -68,7 +68,7 @@ func LoadTemplate(f string) *template.Template {
 	return t
 }
 
-func Render(f *jia.GoFile, t *template.Template) ([]byte, error) {
+func render(f *jia.GoFile, t *template.Template) ([]byte, error) {
 	bf := bytes.NewBuffer(nil)
 	err := t.Execute(bf, f)
 	if err != nil {
@@ -76,7 +76,7 @@ func Render(f *jia.GoFile, t *template.Template) ([]byte, error) {
 		return nil, err
 	}
 
-	if *Format == FormatGo {
+	if *fileFormat == formatGo {
 		v, err := format.Source(bf.Bytes())
 		handleErr("format go file", err)
 		return v, err
@@ -84,7 +84,7 @@ func Render(f *jia.GoFile, t *template.Template) ([]byte, error) {
 	return bf.Bytes(), nil
 }
 
-func IsDir(p string) bool {
+func isDir(p string) bool {
 	info, err := os.Stat(p)
 	// FIXME p may be not exist
 	if err != nil {
@@ -93,8 +93,8 @@ func IsDir(p string) bool {
 	return info.IsDir()
 }
 
-func Resolve(inPath, outPath string) string {
-	if IsDir(outPath) {
+func resolve(inPath, outPath string) string {
+	if isDir(outPath) {
 		return path.Join(outPath, path.Base(inPath))
 	}
 	return outPath
