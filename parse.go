@@ -15,7 +15,7 @@ import (
 	"strings"
 	"unicode"
 
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v3"
 )
 
 type FieldType types.Type
